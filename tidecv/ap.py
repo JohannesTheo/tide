@@ -150,6 +150,17 @@ class ClassedAPDataObject:
 
 	def get_mAP(self) -> float:
 		aps = [x.get_ap() for x in self.objs.values() if not x.is_empty()]
+		if len(aps) == 0:
+			# This can happen in two cases (x.is_empty for every x (class)):
+			# 1. There are actually no gt_positives, i.e. an empty dataset without any labels.
+			#    If one class has no labels, pycocotools sets it to -1 and ignores it.
+			#    If all classes have no labels, pycocotools will return -1 AP overall.
+			#    We ignore this case since it practically makes no sense.
+			# 2. There are no valid predictions (dts) which means num FN = num GTs.
+			#    Since quantify.fix_errors will reduce num GTs by num FNs to estimate
+			#    e.g. MissedError, all classes will be 'empty' even though we have
+			#    valid GTs. In this case, we return AP of 1.0
+			return 1.0
 		return sum(aps) / len(aps)
 
 	def get_gt_positives(self) -> dict:
