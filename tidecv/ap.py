@@ -87,7 +87,7 @@ class APDataObject:
 			if datum[1]: num_true += 1
 			else: num_false += 1
 			
-			precision = num_true / (num_true + num_false)
+			precision = num_true / (num_true + num_false + np.spacing(1))
 			recall    = num_true / self.num_gt_positives
 
 			precisions.append(precision)
@@ -103,7 +103,9 @@ class APDataObject:
 		# Compute the integral of precision(recall) d_recall from recall=0->1 using fixed-length riemann summation with 101 bars.
 		resolution = 100 # Standard COCO Resoluton
 		y_range = [0] * (resolution + 1) # idx 0 is recall == 0.0 and idx 100 is recall == 1.00
-		x_range = np.array([x / resolution for x in range(resolution + 1)])
+		#x_range = np.array([x / resolution for x in range(resolution + 1)])
+		x_range = np.linspace(.0, 1.00, int(np.round((1.00 - .0) / .01)) + 1, endpoint=True)  # TODO: THIS lol
+		#precisions = np.array(precisions)
 		recalls = np.array(recalls)
 
 		# I realize this is weird, but all it does is find the nearest precision(x) for a given x in x_range.
