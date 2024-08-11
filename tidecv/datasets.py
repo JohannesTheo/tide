@@ -102,9 +102,11 @@ def COCO(path:str=None, name:str=None, year:int=2017, ann_set:str='val', force_d
 		_class = ann['category_id']
 		box    = ann['bbox']
 		mask   = f.toRLE(ann['segmentation'], image_lookup[image]['width'], image_lookup[image]['height'])
+		# if the annotation file contains pre-computed boundaries, we expect them to be RLEs already!
+		boundary = ann['boundary'] if 'boundary' in ann.keys() else None
 		
-		if ann['iscrowd']: data.add_ignore_region(image, _class, box, mask)
-		else:              data.add_ground_truth (image, _class, box, mask)
+		if ann['iscrowd']: data.add_ignore_region(image, _class, box, mask, boundary)
+		else:              data.add_ground_truth (image, _class, box, mask, boundary)
 
 	return data
 
@@ -121,8 +123,9 @@ def COCOResult(path:str, name:str=None) -> Data:
 			score = det['score']
 			box   = det['bbox']         if 'bbox'         in det else None
 			mask  = det['segmentation'] if 'segmentation' in det else None
+			boundary = det['boundary']  if 'boundary'     in det else None
 
-			data.add_detection(image, _cls, score, box, mask)
+			data.add_detection(image, _cls, score, box, mask, boundary)
 	
 	return data
 	
@@ -186,8 +189,10 @@ def LVIS(path:str=None, name:str=None, version_str:str='v1', force_download:bool
 		_class = ann['category_id']
 		box    = ann['bbox']
 		mask   = f.toRLE(ann['segmentation'], image_lookup[image]['width'], image_lookup[image]['height'])
+		# if the annotation file contains pre-computed boundaries, we expect them to be RLEs already!
+		boundary = ann['boundary'] if 'boundary' in ann.keys() else None
 		
-		data.add_ground_truth(image, _class, box, mask)
+		data.add_ground_truth(image, _class, box, mask, boundary)
 
 		# There's an annotation for this class, so we should consider the class for evaluation.
 		classes_in_img[image].add(_class)

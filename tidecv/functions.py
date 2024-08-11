@@ -134,7 +134,7 @@ def toBoundary(rle:object, dilation_ratio:float=0.02):
 def toBoundaryAll(anns:list, dilation_ratio):
 	for ann in anns:
 		if ann['mask'] is not None:
-			ann['mask'] = toBoundary(ann['mask'], dilation_ratio)				
+			ann['boundary'] = toBoundary(ann['mask'], dilation_ratio)
 	return anns
 
 def polyToBox(poly:list):
@@ -203,7 +203,7 @@ def _waitBoundarifyBatch(procs:list, out_file:FileIO):
 def toBoundaryAllStr(anns:list, dilation_ratio):
 	for ann in anns:
 		if ann['segmentation'] is not None:
-			ann['segmentation'] = toBoundary(ann['segmentation'], dilation_ratio)
+			ann['boundary'] = toBoundary(ann['segmentation'], dilation_ratio)
 	return [json.dumps(ann) for ann in anns]
 
 

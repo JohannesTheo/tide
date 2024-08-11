@@ -30,7 +30,12 @@ class TIDEExample:
 		preds    = self.preds
 		gt       = self.gt
 		ignore   = self.ignore_regions
-		det_type = 'bbox' if self.mode == TIDE.BOX else 'mask'
+		if self.mode == TIDE.BOX:
+			det_type = 'bbox'
+		elif self.mode == TIDE.MASK:
+			det_type = 'mask'
+		elif self.mode == TIDE.BOUNDARY:
+			det_type = 'boundary'
 		max_dets = self.max_dets
 
 		if len(preds) == 0:
@@ -41,14 +46,31 @@ class TIDEExample:
 		preds.sort(key=lambda pred: -pred['score'])
 		preds = preds[:max_dets]
 		self.preds = preds # Update internally so TIDERun can update itself if :max_dets takes effect
-		detections = [x[det_type] for x in preds]
-
 		
-		# IoU is [len(detections), len(gt)]
-		self.gt_iou = mask_utils.iou(
-			detections,
-			[x[det_type] for x in gt],
-			[False] * len(gt))
+		if det_type == 'boundary':
+			# boundary-iou is calculated as the minimum of mask and boundary iou
+			detections = [x['mask'] for x in preds]
+			# IoU is [len(detections), len(gt)]
+			gt_iou_mask = mask_utils.iou(
+				detections,
+				[x['mask'] for x in gt],
+				[False] * len(gt))
+
+			detections = [x['boundary'] for x in preds]
+			# IoU is [len(detections), len(gt)]
+			gt_iou_boundary = mask_utils.iou(
+				detections,
+				[x['boundary'] for x in gt],
+				[False] * len(gt))
+
+			self.gt_iou = np.minimum(np.array(gt_iou_mask), np.array(gt_iou_boundary))
+		else:
+			detections = [x[det_type] for x in preds]
+			# IoU is [len(detections), len(gt)]
+			self.gt_iou = mask_utils.iou(
+				detections,
+				[x[det_type] for x in gt],
+				[False] * len(gt))
 
 		# Store whether a prediction / gt got used in their data list
 		# Note: this is set to None if ignored, keep that in mind
@@ -71,7 +93,6 @@ class TIDEExample:
 			
 			# This will be changed in the matching calculation, so make a copy
 			iou_buffer = self.gt_cls_iou.copy()
-
 			for pred_idx, pred_elem in enumerate(preds):
 				# Find the max iou ground truth for this prediction
 				gt_idx = np.argmax(iou_buffer[pred_idx, :])
@@ -94,7 +115,7 @@ class TIDEExample:
 		if len(ignore) > 0:
 			# Because ignore regions have extra parameters, it's more efficient to use a for loop here
 			for ignore_region in ignore:
-				if ignore_region['mask'] is None and ignore_region['bbox'] is None:
+				if ignore_region['mask'] is None and ignore_region['bbox'] is None and ignore_region['boundary'] is None:
 					# The region should span the whole image
 					ignore_iou = [1] * len(preds)
 				else:
@@ -102,6 +123,11 @@ class TIDEExample:
 						# There is no det_type annotation for this specific region so skip it
 						continue
 					# Otherwise, compute the crowd IoU between the detections and this region
+					if det_type == 'boundary':
+						# NOTE: boundary-iou uses mask iou by default and only sets min(mask,boundary) for non ignore
+						#       regions. See code above and compare to computeBoundaryIoU in boundary-iou api.
+						det_type = 'mask'
+						detections = [x['mask'] for x in preds]
 					ignore_iou = mask_utils.iou(detections, [ignore_region[det_type]], [True])
 
 				for pred_idx, pred_elem in enumerate(preds):
@@ -420,11 +446,12 @@ class TIDE:
 
 	# Threshold splits for different challenges
 	COCO_THRESHOLDS = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-	VOL_THRESHOLDS  = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] 
+	VOL_THRESHOLDS  = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
 	# The modes of evaluation
 	BOX  = 'bbox'
 	MASK = 'mask'
+	BOUNDARY = 'boundary'
 
 	def __init__(self, pos_threshold:float=0.5, background_threshold:float=0.1, mode:str=BOX):
 		self.pos_thresh = pos_threshold
