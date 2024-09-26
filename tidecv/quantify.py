@@ -160,7 +160,7 @@ class TIDERun:
 	# Temporary variables stored in ground truth that we need to clear after a run
 	_temp_vars = ['best_score', 'best_id', 'used', 'matched_with', '_idx', 'usable']
 
-	def __init__(self, gt:Data, preds:Data, pos_thresh:float, bg_thresh:float, mode:str, max_dets:int, run_errors:bool=True):
+	def __init__(self, gt:Data, preds:Data, pos_thresh:float, bg_thresh:float, mode:str, max_dets:int, run_errors:bool=True, verbose:bool=True):
 		self.gt     = gt
 		self.preds  = preds
 
@@ -177,6 +177,7 @@ class TIDERun:
 		self.mode       = mode
 		self.max_dets   = max_dets
 		self.run_errors = run_errors
+		self.verbose = verbose
 
 		self._run()
 
@@ -184,7 +185,7 @@ class TIDERun:
 	def _run(self):
 		""" And awaaay we go """
 
-		for image in tqdm(self.gt.images, desc='Evaluating Images'):
+		for image in tqdm(self.gt.images, desc='Evaluating Images', disable=not self.verbose):
 			x = self.preds.get(image)
 			y = self.gt.get(image)
 
@@ -471,13 +472,13 @@ class TIDE:
 
 
 	def evaluate(self, gt:Data, preds:Data, pos_threshold:float=None, background_threshold:float=None,
-					   mode:str=None, name:str=None, use_for_errors:bool=True) -> TIDERun:
+					   mode:str=None, name:str=None, use_for_errors:bool=True, verbose:bool=True) -> TIDERun:
 		pos_thresh = self.pos_thresh if pos_threshold        is None else pos_threshold
 		bg_thresh  = self.bg_thresh  if background_threshold is None else background_threshold
 		mode       = self.mode       if mode                 is None else mode
 		name       = preds.name      if name                 is None else name
 
-		run = TIDERun(gt, preds, pos_thresh, bg_thresh, mode, gt.max_dets, use_for_errors)
+		run = TIDERun(gt, preds, pos_thresh, bg_thresh, mode, gt.max_dets, use_for_errors, verbose=verbose)
 
 		if use_for_errors:
 			self.runs[name] = run
